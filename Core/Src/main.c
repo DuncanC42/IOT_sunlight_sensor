@@ -21,7 +21,8 @@
 
 /* Private includes ----------------------------------------------------------*/
 /* USER CODE BEGIN Includes */
-
+#include "si1145.h"
+#include <stdio.h>
 /* USER CODE END Includes */
 
 /* Private typedef -----------------------------------------------------------*/
@@ -45,7 +46,8 @@ I2C_HandleTypeDef hi2c1;
 UART_HandleTypeDef huart2;
 
 /* USER CODE BEGIN PV */
-
+SI1145_Data sensor_data;
+char uart_buf[80];
 /* USER CODE END PV */
 
 /* Private function prototypes -----------------------------------------------*/
@@ -94,7 +96,14 @@ int main(void)
   MX_USART2_UART_Init();
   MX_I2C1_Init();
   /* USER CODE BEGIN 2 */
+  HAL_Delay(100);
 
+  if (SI1145_Init(&hi2c1) != HAL_OK) {
+      while (1) {
+          HAL_GPIO_TogglePin(LD2_GPIO_Port, LD2_Pin);
+          HAL_Delay(100);
+      }
+  }
   /* USER CODE END 2 */
 
   /* Infinite loop */
@@ -104,8 +113,18 @@ int main(void)
     /* USER CODE END WHILE */
 
     /* USER CODE BEGIN 3 */
-  }
+
+      if (SI1145_Read(&hi2c1, &sensor_data) == HAL_OK) {
+      int len = snprintf(uart_buf, sizeof(uart_buf),
+          "VIS=%5u  IR=%5u  UV=%4u (x100)\r\n",
+          sensor_data.visible,
+          sensor_data.infrared,
+          sensor_data.uv_index);
+      HAL_UART_Transmit(&huart2, (uint8_t *)uart_buf, len, HAL_MAX_DELAY);
+    }
+    HAL_Delay(500);
   /* USER CODE END 3 */
+  }
 }
 
 /**
