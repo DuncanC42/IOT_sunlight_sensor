@@ -21,7 +21,7 @@
 
 /* Private includes ----------------------------------------------------------*/
 /* USER CODE BEGIN Includes */
-#include "si1145.h"
+#include "si1151.h"
 #include <stdio.h>
 /* USER CODE END Includes */
 
@@ -43,10 +43,11 @@
 /* Private variables ---------------------------------------------------------*/
 I2C_HandleTypeDef hi2c1;
 
+UART_HandleTypeDef huart1;
 UART_HandleTypeDef huart2;
 
 /* USER CODE BEGIN PV */
-SI1145_Data sensor_data;
+SI1151_Data sensor_data;
 char uart_buf[80];
 /* USER CODE END PV */
 
@@ -55,6 +56,7 @@ void SystemClock_Config(void);
 static void MX_GPIO_Init(void);
 static void MX_USART2_UART_Init(void);
 static void MX_I2C1_Init(void);
+static void MX_USART1_UART_Init(void);
 /* USER CODE BEGIN PFP */
 
 /* USER CODE END PFP */
@@ -95,15 +97,35 @@ int main(void)
   MX_GPIO_Init();
   MX_USART2_UART_Init();
   MX_I2C1_Init();
+  MX_USART1_UART_Init();
   /* USER CODE BEGIN 2 */
   HAL_Delay(100);
 
-  if (SI1145_Init(&hi2c1) != HAL_OK) {
-      while (1) {
-          HAL_GPIO_TogglePin(LD2_GPIO_Port, LD2_Pin);
-          HAL_Delay(100);
-      }
+  // Configuration XBee en mode commande AT
+  //HAL_Delay(1100);
+  //HAL_UART_Transmit(&huart1, (uint8_t*)"+++", 3, HAL_MAX_DELAY);
+  //HAL_Delay(1100);
+  //
+  //// PAN ID identique au coordinateur
+  //HAL_UART_Transmit(&huart1, (uint8_t*)"ATID1234\r", 9, HAL_MAX_DELAY);
+  //HAL_Delay(100);
+  //// Destination broadcast
+  //HAL_UART_Transmit(&huart1, (uint8_t*)"ATDLFFFF\r", 9, HAL_MAX_DELAY);
+  //HAL_Delay(100);
+  //HAL_UART_Transmit(&huart1, (uint8_t*)"ATDH0\r", 6, HAL_MAX_DELAY);
+  //HAL_Delay(100);
+  //// Sauvegarder
+  //HAL_UART_Transmit(&huart1, (uint8_t*)"ATWR\r", 5, HAL_MAX_DELAY);
+  //HAL_Delay(100);
+  //// Quitter le mode commande
+  //HAL_UART_Transmit(&huart1, (uint8_t*)"ATCN\r", 5, HAL_MAX_DELAY);
+  //HAL_Delay(100);
+  if (SI1151_Init(&hi2c1) != HAL_OK) {
+    // Affiche un message au lieu de blinker à l'aveugle
+    HAL_UART_Transmit(&huart2, (uint8_t*)"Init failed\r\n", 13, HAL_MAX_DELAY);
+    while (1);
   }
+  HAL_UART_Transmit(&huart2, (uint8_t*)"Init OK\r\n", 9, HAL_MAX_DELAY);
   /* USER CODE END 2 */
 
   /* Infinite loop */
@@ -114,17 +136,16 @@ int main(void)
 
     /* USER CODE BEGIN 3 */
 
-      if (SI1145_Read(&hi2c1, &sensor_data) == HAL_OK) {
-      int len = snprintf(uart_buf, sizeof(uart_buf),
-          "VIS=%5u  IR=%5u  UV=%4u (x100)\r\n",
-          sensor_data.visible,
-          sensor_data.infrared,
-          sensor_data.uv_index);
-      HAL_UART_Transmit(&huart2, (uint8_t *)uart_buf, len, HAL_MAX_DELAY);
+    if (SI1151_Read(&hi2c1, &sensor_data) == HAL_OK) {
+        int len = snprintf(uart_buf, sizeof(uart_buf),
+            "VIS=%5u  IR=%5u\r\n",
+            sensor_data.visible,
+            sensor_data.infrared);
+        HAL_UART_Transmit(&huart2, (uint8_t *)uart_buf, len, HAL_MAX_DELAY);
     }
     HAL_Delay(500);
-  /* USER CODE END 3 */
   }
+  /* USER CODE END 3 */
 }
 
 /**
@@ -204,6 +225,39 @@ static void MX_I2C1_Init(void)
   /* USER CODE BEGIN I2C1_Init 2 */
 
   /* USER CODE END I2C1_Init 2 */
+
+}
+
+/**
+  * @brief USART1 Initialization Function
+  * @param None
+  * @retval None
+  */
+static void MX_USART1_UART_Init(void)
+{
+
+  /* USER CODE BEGIN USART1_Init 0 */
+
+  /* USER CODE END USART1_Init 0 */
+
+  /* USER CODE BEGIN USART1_Init 1 */
+
+  /* USER CODE END USART1_Init 1 */
+  huart1.Instance = USART1;
+  huart1.Init.BaudRate = 9600;
+  huart1.Init.WordLength = UART_WORDLENGTH_8B;
+  huart1.Init.StopBits = UART_STOPBITS_1;
+  huart1.Init.Parity = UART_PARITY_NONE;
+  huart1.Init.Mode = UART_MODE_TX_RX;
+  huart1.Init.HwFlowCtl = UART_HWCONTROL_NONE;
+  huart1.Init.OverSampling = UART_OVERSAMPLING_16;
+  if (HAL_UART_Init(&huart1) != HAL_OK)
+  {
+    Error_Handler();
+  }
+  /* USER CODE BEGIN USART1_Init 2 */
+
+  /* USER CODE END USART1_Init 2 */
 
 }
 
